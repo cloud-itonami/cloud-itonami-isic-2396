@@ -1,0 +1,36 @@
+{:itonami.blueprint/id "cloud-itonami-isic-2396"
+ :itonami.blueprint/name "Cutting, shaping and finishing of stone"
+ :itonami.blueprint/isic-rev5 "2396"
+ :itonami.blueprint/domain :stone-cutting-shaping-finishing/manufacturing
+ :itonami.blueprint/license "AGPL-3.0-or-later"
+ :itonami.blueprint/social-impact [:worker-safety :materials-safety :resource-efficiency]
+ :itonami.blueprint/governor :dimension-stone-plant-operations-governor
+ :itonami.blueprint/robotics true
+ :itonami.blueprint/required-technologies [:robotics :identity :forms :dmn :bpmn :audit-ledger :cae]
+ :itonami.blueprint/status :public-oss
+ :itonami.blueprint/maturity :implemented
+ :itonami.blueprint/implemented-slice
+ "StoneAdvisor ⊣ Dimension Stone Plant Operations Governor, langgraph-clj
+ StateGraph, append-only audit ledger. A plant OPERATIONS COORDINATION
+ actor for dimension-stone (granite/marble/limestone/sandstone slab,
+ monument, countertop) plants (quarried-block intake -> sawing
+ (gang-saw/bridge-saw/wire-saw) -> polishing -> edge-profiling/CNC
+ shaping -> inspection production line) -- not direct sawing-line/
+ polishing-line-equipment control authority. Four ops
+ (`:log-production-batch` / `:schedule-maintenance` /
+ `:flag-safety-concern` / `:coordinate-shipment`), all `:effect
+ :propose` only. Eleven concrete governor checks elaborate this
+ blueprint's four HARD invariants: propose-only effect, closed op
+ allowlist, closed proposal-effect allowlist (no direct sawing-line/
+ polishing-line-equipment control), permanent sawing/polishing-line-
+ actuate block, independent equipment verification/registration before
+ maintenance scheduling, independent batch verification/registration
+ before shipment coordination, independent shipment-weight recompute
+ against the batch's own logged weight, double-schedule guard,
+ product-type validation, slab-thickness-tolerance plausibility
+ validation, and polish-gloss-level plausibility validation.
+ Safety-concern flagging (sawing/polishing-line-equipment safety --
+ crystalline-silica-dust exposure, saw-blade kickback, heavy-slab
+ crush hazard) ALWAYS escalates to a human plant supervisor;
+ `:log-production-batch` is the only op eligible to auto-commit, and
+ only at phase 3 when governor-clean."}
