@@ -2515,20 +2515,20 @@ img,svg { max-width: 100%; height: auto; }
   </section>
   <section class="card">
     <h2>アクションゲート / Action gate (Dimension Stone Plant Operations Governor)</h2>
-    <p class="muted">The four ops this actor may ever route (<code>stonemfg.governor/allowed-ops</code>), with what this run actually did with each. HARD holds cannot be overridden by any phase or any human.</p>
+    <p class="muted">The four ops this actor may ever route (<code>stonemfg.governor/allowed-ops</code>), with what this run actually did with each. Every column is counted from the run or read off <code>stonemfg.phase/phases</code> -- none of it is a restatement. <code>requires-supervisor-approval</code> means the GOVERNOR escalated on stake or confidence (<code>stonemfg.governor/high-stakes</code> = <code>safety-concern</code>); <code>phase-approval</code> means the governor was clean and the rollout phase alone withheld auto-commit.</p>
     <table>
-      <thead><tr><th>Op</th><th>Auto-eligible at phase 3</th><th>High-stakes (always human)</th><th>Committed this run</th><th>HARD-held this run</th></tr></thead>
+      <thead><tr><th>Op</th><th>Auto-eligible at phase 3</th><th>Escalated this run as</th><th>Committed this run</th><th>HARD-held this run</th></tr></thead>
       <tbody>
-        <tr><td><code>coordinate-shipment</code></td><td><span class="warn">no -- always human approval</span></td><td><span class="muted">no</span></td><td>1</td><td><span class="critical">3</span></td></tr>
-        <tr><td><code>flag-safety-concern</code></td><td><span class="warn">no -- always human approval</span></td><td><span class="warn">yes &middot; <code>:coordination/safety-concern</code></span></td><td>2</td><td>0</td></tr>
-        <tr><td><code>log-production-batch</code></td><td><span class="ok">yes -- when governor-clean</span></td><td><span class="muted">no</span></td><td>1</td><td><span class="critical">4</span></td></tr>
-        <tr><td><code>schedule-maintenance</code></td><td><span class="warn">no -- always human approval</span></td><td><span class="muted">no</span></td><td>1</td><td><span class="critical">4</span></td></tr>
+        <tr><td><code>coordinate-shipment</code></td><td><span class="warn">no -- a human decides</span></td><td><span class="muted"><code>phase-approval</code> &times;1</span></td><td>1</td><td><span class="critical">3</span></td></tr>
+        <tr><td><code>flag-safety-concern</code></td><td><span class="warn">no -- a human decides</span></td><td><span class="warn"><code>requires-supervisor-approval</code> &times;2</span></td><td>2</td><td>0</td></tr>
+        <tr><td><code>log-production-batch</code></td><td><span class="ok">yes -- when governor-clean</span></td><td><span class="muted">never escalated</span></td><td>1</td><td><span class="critical">4</span></td></tr>
+        <tr><td><code>schedule-maintenance</code></td><td><span class="warn">no -- a human decides</span></td><td><span class="muted"><code>phase-approval</code> &times;2</span></td><td>1</td><td><span class="critical">4</span></td></tr>
       </tbody>
     </table>
   </section>
   <section class="card">
     <h2>ロールアウト段階ゲート / Rollout phase gate</h2>
-    <p class="muted">Straight out of <code>stonemfg.phase/phases</code>. This console ran at phase 3 unless a row below says otherwise. <code>:schedule-maintenance</code> is a member of <code>write-ops</code> but of NO phase's <code>:auto</code> set at any phase -- a permanent structural fact, not a milestone still to come.</p>
+    <p class="muted">Straight out of <code>stonemfg.phase/phases</code>. This console ran at phase 3 unless a row below says otherwise. Computed from that same table (<code>stonemfg.render-html/never-auto-ops</code>): <code>coordinate-shipment, flag-safety-concern, schedule-maintenance</code> are members of <code>write-ops</code> but of NO phase's <code>:auto</code> set at any phase, so however clean the governor is, they always reach a human. This sentence is derived, not asserted -- an op that gains auto-eligibility drops out of it.</p>
     <table>
       <thead><tr><th>Phase</th><th>Label</th><th>May write</th><th>May auto-commit when governor-clean</th></tr></thead>
       <tbody>
@@ -2609,7 +2609,7 @@ img,svg { max-width: 100%; height: auto; }
   </section>
   <section class="card">
     <h2>安全懸念ログ / Safety-concern log</h2>
-    <p class="muted"><code>:flag-safety-concern</code> is permanently <code>:coordination/safety-concern</code> and therefore ALWAYS escalates to a human, at every phase, however confident the advisor is. It is deliberately NOT gated on the referenced unit being verified/registered -- safety reporting is never blocked on an administrative technicality.</p>
+    <p class="muted">Observed in this run: <strong>2 of 2</strong> <code>:flag-safety-concern</code> requests escalated to a human with reason <code>requires-supervisor-approval</code> -- the governor's own high-stakes gate fired, not the rollout phase. The <code>Equipment verified?</code> column below is the second half of the story: this op is deliberately NOT gated on the referenced unit being verified/registered -- safety reporting is never blocked on an administrative technicality.</p>
     <table>
       <thead><tr><th>Concern</th><th>Equipment</th><th>Equipment verified?</th><th>Severity</th><th>Description</th></tr></thead>
       <tbody>

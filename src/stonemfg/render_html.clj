@@ -25,6 +25,12 @@
     - the rollout phase table comes from `stonemfg.phase/phases`
     - the closed sets / plausibility bands come from
       `stonemfg.governor` and `stonemfg.registry` vars
+    - which ops are high-stakes, and which can never auto-commit at any
+      phase, are DERIVED (`high-stakes-ops` off the run's own
+      `:approval-requested` reasons, `never-auto-ops` off
+      `stonemfg.phase/phases`) rather than asserted in prose. A sentence
+      claiming a rule can never fire becomes a lie the moment someone
+      changes the rule; a derived one leaves the page by itself.
     - the approval-attribution disclosure is MEASURED at render time
       (`approver-retained?`) by looking for the approver key in the
       store's own registers -- it is not a hardcoded claim, so it stops
@@ -332,6 +338,44 @@
            :retained? (approver-retained? db subject)})
         (filter #(= :approval-granted (:t %)) audit)))
 
+(defn escalation-reasons
+  "op -> {reason -> times}, read off the run's own `:approval-requested`
+  facts.
+
+  `stonemfg.operation` labels an escalation `:requires-supervisor-approval`
+  when the GOVERNOR escalated on stake/confidence, and `:phase-approval`
+  when the governor was clean and only the rollout phase withheld
+  auto-commit. Both are observations of this run, so the page never has to
+  restate which ops are high-stakes -- if the advisor stops assigning a
+  high-stakes stake, or `stonemfg.governor/high-stakes` changes, this map
+  changes with it."
+  [audit]
+  (reduce (fn [m {:keys [op reason]}] (update-in m [op reason] (fnil inc 0)))
+          {}
+          (filter #(= :approval-requested (:t %)) audit)))
+
+(defn high-stakes-ops
+  "Ops this run actually saw escalate because the GOVERNOR found the
+  proposal high-stakes -- derived, never asserted."
+  [audit]
+  (into #{}
+        (keep (fn [[op reasons]]
+                (when (pos? (get reasons :requires-supervisor-approval 0)) op)))
+        (escalation-reasons audit)))
+
+(defn never-auto-ops
+  "Write ops that appear in NO phase's `:auto` set -- computed from
+  `stonemfg.phase/phases` itself.
+
+  The page used to assert in prose that `:schedule-maintenance` can never
+  auto-commit at any phase. That sentence would have gone on being printed
+  the day someone added it to a phase's `:auto` set, directly above a table
+  showing the opposite. Deriving the set instead means the claim leaves the
+  page on its own."
+  []
+  (let [auto-anywhere (into #{} (mapcat :auto) (vals phase/phases))]
+    (into (sorted-set) (remove auto-anywhere phase/write-ops))))
+
 ;; ----------------------------- html -----------------------------
 
 (defn- esc [v]
@@ -430,8 +474,17 @@
    "ロールアウト段階ゲート / Rollout phase gate"
    (str "Straight out of <code>stonemfg.phase/phases</code>. "
         "This console ran at phase " phase/default-phase " unless a row below says otherwise. "
-        "<code>:schedule-maintenance</code> is a member of <code>write-ops</code> but of NO phase's "
-        "<code>:auto</code> set at any phase -- a permanent structural fact, not a milestone still to come.")
+        (let [never (never-auto-ops)]
+          (if (seq never)
+            (str "Computed from that same table (<code>stonemfg.render-html/never-auto-ops</code>): "
+                 "<code>" (esc (kws never)) "</code> "
+                 (if (= 1 (count never)) "is a member" "are members")
+                 " of <code>write-ops</code> but of NO phase's <code>:auto</code> set at any phase, "
+                 "so however clean the governor is, "
+                 (if (= 1 (count never)) "it" "they")
+                 " always reach a human. This sentence is derived, not asserted -- an op that gains "
+                 "auto-eligibility drops out of it.")
+            "Every write op is auto-eligible at some phase.")))
    (str
     (table ["Phase" "Label" "May write" "May auto-commit when governor-clean"]
            (for [[p {:keys [label writes auto]}] (sort-by key phase/phases)]
@@ -451,24 +504,33 @@
                         (str "<span class=\"warn\">" (esc (kw (:phase-reason f))) "</span>")))))
       ""))))
 
-(defn- gate-section [db]
+(defn- gate-section [db audit]
   (let [ledger (store/ledger db)
         holds-by-op (group-by :op (hard-holds db))
-        committed-by-op (group-by :op (filter #(= :committed (:t %)) ledger))]
+        committed-by-op (group-by :op (filter #(= :committed (:t %)) ledger))
+        reasons (escalation-reasons audit)]
     (section
      "アクションゲート / Action gate (Dimension Stone Plant Operations Governor)"
      (str "The four ops this actor may ever route (<code>stonemfg.governor/allowed-ops</code>), "
-          "with what this run actually did with each. HARD holds cannot be overridden by any "
-          "phase or any human.")
-     (table ["Op" "Auto-eligible at phase 3" "High-stakes (always human)" "Committed this run" "HARD-held this run"]
+          "with what this run actually did with each. Every column is counted from the run or "
+          "read off <code>stonemfg.phase/phases</code> -- none of it is a restatement. "
+          "<code>requires-supervisor-approval</code> means the GOVERNOR escalated on stake or "
+          "confidence (<code>stonemfg.governor/high-stakes</code> = <code>"
+          (esc (kws governor/high-stakes)) "</code>); <code>phase-approval</code> means the "
+          "governor was clean and the rollout phase alone withheld auto-commit.")
+     (table ["Op" "Auto-eligible at phase 3" "Escalated this run as" "Committed this run" "HARD-held this run"]
             (for [o (sort-by kw governor/allowed-ops)]
               (tr (str "<code>" (esc (kw o)) "</code>")
                   (if (contains? (get-in phase/phases [3 :auto]) o)
                     "<span class=\"ok\">yes -- when governor-clean</span>"
-                    "<span class=\"warn\">no -- always human approval</span>")
-                  (if (= o :flag-safety-concern)
-                    "<span class=\"warn\">yes &middot; <code>:coordination/safety-concern</code></span>"
-                    "<span class=\"muted\">no</span>")
+                    "<span class=\"warn\">no -- a human decides</span>")
+                  (if-let [rs (seq (sort-by (comp kw key) (get reasons o)))]
+                    (str/join "<br>"
+                              (for [[r n] rs]
+                                (str (if (= :requires-supervisor-approval r)
+                                       "<span class=\"warn\">" "<span class=\"muted\">")
+                                     "<code>" (esc (kw r)) "</code> &times;" (esc n) "</span>")))
+                    "<span class=\"muted\">never escalated</span>")
                   (esc (count (get committed-by-op o)))
                   (let [n (count (get holds-by-op o))]
                     (if (pos? n) (str "<span class=\"critical\">" n "</span>") "0"))))))))
@@ -543,13 +605,23 @@
                     (yn (get r "immutable")))))
        "    <p class=\"muted\">none committed</p>\n"))))
 
-(defn- safety-section [db]
-  (let [concerns (store/safety-concerns db)]
+(defn- safety-section [db audit]
+  (let [concerns (store/safety-concerns db)
+        n-escalated (get-in (escalation-reasons audit)
+                            [:flag-safety-concern :requires-supervisor-approval] 0)]
     (section
      "安全懸念ログ / Safety-concern log"
-     (str "<code>:flag-safety-concern</code> is permanently <code>:coordination/safety-concern</code> "
-          "and therefore ALWAYS escalates to a human, at every phase, however confident the advisor is. "
-          "It is deliberately NOT gated on the referenced unit being verified/registered -- "
+     (str (if (pos? n-escalated)
+            (str "Observed in this run: <strong>" (esc n-escalated) " of " (esc (count concerns))
+                 "</strong> <code>:flag-safety-concern</code> request"
+                 (when (not= 1 n-escalated) "s")
+                 " escalated to a human with reason "
+                 "<code>requires-supervisor-approval</code> -- the governor's own high-stakes gate "
+                 "fired, not the rollout phase. ")
+            (str "This run recorded no governor-driven escalation for "
+                 "<code>:flag-safety-concern</code>. "))
+          "The <code>Equipment verified?</code> column below is the second half of the story: this op "
+          "is deliberately NOT gated on the referenced unit being verified/registered -- "
           "safety reporting is never blocked on an administrative technicality.")
      (if (seq concerns)
        (table ["Concern" "Equipment" "Equipment verified?" "Severity" "Description"]
@@ -704,13 +776,13 @@
             (tr "safety concerns" (esc (count (store/safety-concerns db))))]))
    (batches-section db)
    (equipment-section db)
-   (gate-section db)
+   (gate-section db audit)
    (phase-section (store/ledger db))
    (hard-rule-section db)
    (holds-section db)
    (maintenance-section db)
    (shipment-section db)
-   (safety-section db)
+   (safety-section db audit)
    (approval-section db audit)
    (closed-sets-section)
    (ledger-section db)
