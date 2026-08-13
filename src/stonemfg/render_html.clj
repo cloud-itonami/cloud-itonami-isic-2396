@@ -824,7 +824,11 @@
         html (render result)]
     (spit out html)
     (println "wrote" out
-             (str "(" (count html) " bytes, "
+             ;; `(count html)` is CHARACTERS, and this page is mostly
+             ;; Japanese -- reporting it as "bytes" understates the file by
+             ;; ~2KB and makes an honest `wc -c` look like non-determinism.
+             ;; Report what the file actually weighs.
+             (str "(" (alength (.getBytes ^String html "UTF-8")) " bytes, "
                   (count (store/ledger db)) " ledger facts, "
                   (count audit) " graph audit facts, "
                   (count holds) " HARD holds across "
