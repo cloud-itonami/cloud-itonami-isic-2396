@@ -450,24 +450,26 @@
                   (status-cell ledger id)))))))
 
 (defn- equipment-section [db]
-  (let [ledger (store/ledger db)]
-    (section
-     "切断・研磨ライン設備 / Sawing &amp; polishing-line equipment"
-     (str "Maintenance may only be scheduled against a unit that is independently "
-          "<code>:verified?</code> AND <code>:registered?</code> "
-          "(<code>stonemfg.registry/equipment-ready?</code>) -- never on the advisor's own report.")
-     (table ["Equipment" "Kind" "Verified" "Registered" "Last maintenance" "Last scheduled"]
-            (for [{:keys [id kind verified? registered?
-                          last-maintenance-date last-scheduled-maintenance-date]} (store/all-equipment db)]
-              (tr (str "<code>" (esc id) "</code>")
-                  (str "<code>" (esc (kw kind)) "</code>")
-                  (yn verified?) (yn registered?)
-                  (if last-maintenance-date (esc last-maintenance-date)
-                      "<span class=\"muted\">never</span>")
-                  (if last-scheduled-maintenance-date (esc last-scheduled-maintenance-date)
-                      "<span class=\"muted\">--</span>")))
-            )))
-  )
+  (section
+   "切断・研磨ライン設備 / Sawing &amp; polishing-line equipment"
+   (str "Maintenance may only be scheduled against a unit that is independently "
+        "<code>:verified?</code> AND <code>:registered?</code> "
+        "(<code>stonemfg.registry/equipment-ready?</code>) -- never on the advisor's own report. "
+        "A safety concern, by contrast, may be raised against ANY unit.")
+   (table ["Equipment" "Kind" "Verified" "Registered" "Maintenance schedulable"
+           "Last maintenance" "Last scheduled" "Last op"]
+          (for [{:keys [id kind verified? registered?
+                        last-maintenance-date last-scheduled-maintenance-date] :as eq}
+                (store/all-equipment db)]
+            (tr (str "<code>" (esc id) "</code>")
+                (str "<code>" (esc (kw kind)) "</code>")
+                (yn verified?) (yn registered?)
+                (yn (registry/equipment-ready? eq))
+                (if last-maintenance-date (esc last-maintenance-date)
+                    "<span class=\"muted\">never</span>")
+                (if last-scheduled-maintenance-date (esc last-scheduled-maintenance-date)
+                    "<span class=\"muted\">--</span>")
+                (status-cell (store/ledger db) id))))))
 
 (defn- phase-section [ledger]
   (section
@@ -646,7 +648,7 @@
           "store's own register for each subject "
           "(<code>stonemfg.render-html/approver-retained?</code>). "
           (if any-retained?
-            (str "<strong>Observed in this run: the approver IS retained in the committed record.</strong>")
+            "<strong>Observed in this run: the approver IS retained in the committed record.</strong>"
             (str "<strong>Observed in this run: the approver is NOT retained in any committed record</strong> -- "
                  "<code>stonemfg.store/commit-record!</code> destructures <code>:value</code> and never "
                  "reads <code>:payload</code>, so the identity below survives only in the graph audit. "

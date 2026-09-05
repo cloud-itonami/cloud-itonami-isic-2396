@@ -2504,12 +2504,12 @@ img,svg { max-width: 100%; height: auto; }
   </section>
   <section class="card">
     <h2>切断・研磨ライン設備 / Sawing &amp; polishing-line equipment</h2>
-    <p class="muted">Maintenance may only be scheduled against a unit that is independently <code>:verified?</code> AND <code>:registered?</code> (<code>stonemfg.registry/equipment-ready?</code>) -- never on the advisor's own report.</p>
+    <p class="muted">Maintenance may only be scheduled against a unit that is independently <code>:verified?</code> AND <code>:registered?</code> (<code>stonemfg.registry/equipment-ready?</code>) -- never on the advisor's own report. A safety concern, by contrast, may be raised against ANY unit.</p>
     <table>
-      <thead><tr><th>Equipment</th><th>Kind</th><th>Verified</th><th>Registered</th><th>Last maintenance</th><th>Last scheduled</th></tr></thead>
+      <thead><tr><th>Equipment</th><th>Kind</th><th>Verified</th><th>Registered</th><th>Maintenance schedulable</th><th>Last maintenance</th><th>Last scheduled</th><th>Last op</th></tr></thead>
       <tbody>
-        <tr><td><code>polish-002</code></td><td><code>polishing-line</code></td><td><span class="warn">no</span></td><td><span class="warn">no</span></td><td><span class="muted">never</span></td><td><span class="muted">--</span></td></tr>
-        <tr><td><code>saw-001</code></td><td><code>bridge-saw</code></td><td><span class="ok">yes</span></td><td><span class="ok">yes</span></td><td>2026-05-01</td><td>2026-08-01</td></tr>
+        <tr><td><code>polish-002</code></td><td><code>polishing-line</code></td><td><span class="warn">no</span></td><td><span class="warn">no</span></td><td><span class="warn">no</span></td><td><span class="muted">never</span></td><td><span class="muted">--</span></td><td><span class="muted">no activity</span></td></tr>
+        <tr><td><code>saw-001</code></td><td><code>bridge-saw</code></td><td><span class="ok">yes</span></td><td><span class="ok">yes</span></td><td><span class="ok">yes</span></td><td>2026-05-01</td><td>2026-08-01</td><td><span class="muted">no activity</span></td></tr>
       </tbody>
     </table>
   </section>
