@@ -1,0 +1,43 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:dev:physics` runs it.
+;;
+;; The README has no "Robotics premise" section; its Scope names the plant
+;; this actor coordinates (ISIC 2396): sawing quarried blocks (gang, bridge,
+;; wire saw), polishing, edge-profiling/CNC shaping and inspecting granite,
+;; marble, limestone and sandstone. The physical work of that plant taken
+;; here: moving slabs stood on an A-frame cart across the yard ramp, feeding
+;; cooling water to the bridge saw's blade, and stacking cut tiles.
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isic-2396"
+ :cases
+ [{:id :a-frame-slab-cart
+   :kind :transport
+   :procedure "AMR tows an A-frame cart carrying two 30 mm granite slabs stood on edge from the polishing line across the yard ramp to the stock rack; sweep = ramp grade"
+   :params {:mass-kg 200.0 :payload-kg 1000.0 :distance-m 40.0 :v-max-mps 0.8 :a-max-mps2 0.3
+            :brake-decel-mps2 0.8 :drive-force-n 3000.0 :crr 0.02
+            :cog-height-m 0.30 :payload-cog-height-m 1.00 :support-half-length-m 0.40 :max-time-s 1200.0}
+   :sweep {:param :slope-deg :values [0.0 3.0 6.0 9.0 12.0]}
+   :quantity :min-tipover-margin
+   :limit {:min 0.3 :basis "estimate: keep 30 % of the restoring moment in reserve for slabs that lean or shift on the A-frame"}
+   :boundary {:lo 0.0 :hi 14.0}}
+  {:id :bridge-saw-cooling-water
+   :kind :pipe-flow
+   :procedure "cooling water to the bridge saw's blade guard through a 25 mm hose (20 m, 3 m rise)"
+   :params {:diameter-m 0.025 :length-m 20.0 :roughness-m 1.5e-6 :density-kg-m3 998.0
+            :viscosity-pa-s 1.0e-3 :pump-efficiency 0.6 :elevation-m 3.0}
+   :sweep {:param :q-m3s :values [0.0003 0.0005 0.0008 0.0012 0.0016]}
+   :quantity :pressure-drop-pa
+   :limit {:max 300000.0 :basis "estimate: 3 bar available from the plant's recirculated-water supply at the saw"}
+   :boundary {:lo 0.0001 :hi 0.004}}
+  {:id :tile-stacking
+   :kind :manipulator
+   :procedure "vacuum-gripper arm lifts cut granite tiles off the calibrating line onto the crate"
+   :params {:l1-m 0.60 :l2-m 0.50 :m1-kg 9.0 :m2-kg 6.0
+            :from [0.75 0.10] :to [0.35 0.60] :duration-s 2.5 :steps 500}
+   :sweep {:param :payload-kg :values [5.0 10.0 15.0 20.0 30.0]}
+   :quantity :peak-tau1-nm
+   :limit {:max 300.0 :basis "estimate: continuous shoulder torque of a ~25 kg-payload handling arm class"}
+   :boundary {:lo 1.0 :hi 80.0}}]}
